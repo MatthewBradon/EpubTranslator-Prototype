@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 
 
 filePath = 'rawEpub/template.epub'
-EpubToConvert = 'rawEpub/この素晴らしい世界に祝福を！ 01　あぁ、駄女神さま.epub'
+EpubToConvert = 'rawEpub\この素晴らしい世界に祝福を！ 01　あぁ、駄女神さま.epub'
 
 EpubChapterList = []
 
