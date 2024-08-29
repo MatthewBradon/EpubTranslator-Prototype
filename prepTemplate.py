@@ -2,11 +2,17 @@ import zipfile
 import os
 import shutil
 from bs4 import BeautifulSoup
+import ebooklib
+from ebooklib import epub
 
 filePath = 'rawEpub/template.epub'
 EpubToConvert = 'rawEpub/この素晴らしい世界に祝福を！ 01　あぁ、駄女神さま.epub'
 xhtmlFiles = []
 EpubChapterList = []
+
+
+
+
 
 # Unzip template into /export
 with zipfile.ZipFile(filePath, 'r') as zip_ref:
@@ -16,6 +22,11 @@ with zipfile.ZipFile(filePath, 'r') as zip_ref:
 with zipfile.ZipFile(EpubToConvert, 'r') as zip_ref:
     zip_ref.extractall('unzipped/')
 
+
+book = epub.read_epub(EpubToConvert)
+spine_order_ids = [item_id for item_id, _ in book.spine]
+
+
 # Get a list of all the xhtml files in the EpubToConvert
 for root, dirs, files in os.walk('unzipped/'):
     for file in files:
@@ -23,9 +34,16 @@ for root, dirs, files in os.walk('unzipped/'):
             EpubChapterList.append(file)
             xhtmlFiles.append(os.path.join(root, file))
 
+        
+EpubChapterList = spine_order_ids
+
 # Duplicate Section0001.xhtml for each chapter in EpubToConvert
 for chapter in EpubChapterList:
-    shutil.copy('export/output/OEBPS/Text/Section0001.xhtml', f'export/output/OEBPS/Text/{chapter}')
+    shutil.copy('export/output/OEBPS/Text/Section0001.xhtml', f'export/output/OEBPS/Text/{chapter}.xhtml')
+
+
+
+
 
 # Update the content.opf file
 with open('export/output/OEBPS/content.opf', 'r') as file:
@@ -44,7 +62,7 @@ for line in data:
         inside_manifest = False
         for index, chapter in enumerate(EpubChapterList, start=1):
             chapter_id = f'chapter{index}'
-            manifest.append(f'    <item id="{chapter_id}" href="Text/{chapter}" media-type="application/xhtml+xml"/>\n')
+            manifest.append(f'    <item id="{chapter_id}" href="Text/{chapter}.xhtml" media-type="application/xhtml+xml"/>\n')
         manifest.append(line)
     elif '<spine>' in line:
         spine.append(line)
@@ -67,16 +85,20 @@ for line in data:
 # Now combine the manifest and spine sections correctly
 final_output = manifest[:-1] + spine + [manifest[-1]]
 
-
-
-
-
 # Write the updated manifest and spine back into content.opf
 with open('export/output/OEBPS/content.opf', 'w') as file:
     file.writelines(final_output)
 
+
+
+
 # Remove Section0001.xhtml from the Text folder
 os.remove('export/output/OEBPS/Text/Section0001.xhtml')
+
+
+
+
+
 
 # Update nav.xhtml to remove Section0001.xhtml entry and reflect new chapters
 with open('export/output/OEBPS/Text/nav.xhtml', 'r') as file:
@@ -92,12 +114,15 @@ for line in data:
     if '<ol>' in line and inside_nav:
         for index, chapter in enumerate(EpubChapterList, start=1):
             chapter_filename = os.path.basename(chapter)
-            nav.append(f'        <li><a href="{chapter_filename}">Chapter {index}</a></li>\n')
+            nav.append(f'        <li><a href="{chapter_filename}.xhtml">Chapter {index}</a></li>\n')
         inside_nav = False
 
 # Write the updated nav.xhtml file
 with open('export/output/OEBPS/Text/nav.xhtml', 'w') as file:
     file.writelines(nav)
+
+
+
 
 
 #Copy all the images from the unzipped epub to the output epub
@@ -106,6 +131,10 @@ for root, dirs, files in os.walk('unzipped/'):
     for file in files:
         if file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.png'):
             shutil.copy(os.path.join(root, file), f'export/output/OEBPS/Images/{file}')
+
+
+
+
 
 
 
@@ -156,6 +185,12 @@ for chapter in xhtmlFiles:
     output_path = f'export/output/OEBPS/Text/{os.path.basename(chapter)}'
     with open(output_path, 'w', encoding='utf-8') as file:
         file.write(xhtml_content)
+
+
+
+
+
+
 
 # Create a new EPUB file
 with zipfile.ZipFile('output.epub', 'w', zipfile.ZIP_DEFLATED) as zf:
