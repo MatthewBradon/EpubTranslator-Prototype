@@ -1,10 +1,11 @@
 import zipfile
 import os
 import shutil
+from bs4 import BeautifulSoup
 
 filePath = 'rawEpub/template.epub'
 EpubToConvert = 'rawEpub/この素晴らしい世界に祝福を！ 01　あぁ、駄女神さま.epub'
-
+xhtmlFiles = []
 EpubChapterList = []
 
 # Unzip template into /export
@@ -20,6 +21,7 @@ for root, dirs, files in os.walk('unzipped/'):
     for file in files:
         if file.endswith('.xhtml'):
             EpubChapterList.append(file)
+            xhtmlFiles.append(os.path.join(root, file))
 
 # Duplicate Section0001.xhtml for each chapter in EpubToConvert
 for chapter in EpubChapterList:
@@ -97,6 +99,64 @@ for line in data:
 with open('export/output/OEBPS/Text/nav.xhtml', 'w') as file:
     file.writelines(nav)
 
+
+#Copy all the images from the unzipped epub to the output epub
+os.makedirs("export/output/OEBPS/Images/", exist_ok=True)
+for root, dirs, files in os.walk('unzipped/'):
+    for file in files:
+        if file.endswith('.jpg') or file.endswith('.jpeg') or file.endswith('.png'):
+            shutil.copy(os.path.join(root, file), f'export/output/OEBPS/Images/{file}')
+
+
+
+# Add all p tags and img tags to the respective chapter in the output epub
+for chapter in xhtmlFiles:
+    with open(chapter, 'r', encoding='utf-8') as file:
+        data = file.read()
+
+    soup = BeautifulSoup(data, 'html.parser')
+
+    # Extract the body content
+    body = soup.body
+
+    chapter_content = []
+
+    # Loop through all elements in the body
+    for element in body.descendants:
+        # Handle p tags and extract their text
+        if element.name == 'p':
+            # Extract all text within the <p> tag, ignoring inner tags
+            p_text = element.get_text(strip=True)
+            chapter_content.append(f'<p>{p_text}</p>\n')
+
+        # Handle img tags and reformat them
+        elif element.name == 'img':
+            img_src = element['src']
+            img_filename = os.path.basename(img_src)
+            chapter_content.append(f'<img src="../Images/{img_filename}"/>\n')
+
+    # If the body is empty, preserve other content
+    chapter_content_str = "".join(chapter_content) if chapter_content else str(body)
+
+    # Construct the XHTML content
+    xhtml_content = (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<!DOCTYPE html>\n'
+        '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">\n'
+        '<head>\n'
+        f'  <title>{os.path.basename(chapter)}</title>\n'
+        '</head>\n'
+        '<body>\n'
+        f'{chapter_content_str}\n'
+        '</body>\n'
+        '</html>'
+    )
+
+    # Write the processed content to a new file
+    output_path = f'export/output/OEBPS/Text/{os.path.basename(chapter)}'
+    with open(output_path, 'w', encoding='utf-8') as file:
+        file.write(xhtml_content)
+
 # Create a new EPUB file
 with zipfile.ZipFile('output.epub', 'w', zipfile.ZIP_DEFLATED) as zf:
     for root, _, files in os.walk('export/output'):
@@ -105,6 +165,3 @@ with zipfile.ZipFile('output.epub', 'w', zipfile.ZIP_DEFLATED) as zf:
             relative_path = os.path.relpath(full_path, 'export/output')
             zf.write(full_path, relative_path)
 
-# # Clean up
-# shutil.rmtree('export/output')
-# shutil.rmtree('unzipped/')
