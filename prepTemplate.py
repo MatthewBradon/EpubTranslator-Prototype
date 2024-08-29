@@ -7,10 +7,9 @@ from ebooklib import epub
 
 filePath = 'rawEpub/template.epub'
 EpubToConvert = 'rawEpub/この素晴らしい世界に祝福を！ 01　あぁ、駄女神さま.epub'
+# EpubToConvert = 'rawEpub\Ascendance of a Bookworm Part 5 volume 11 『Premium Ver』.epub'
 xhtmlFiles = []
 EpubChapterList = []
-
-
 
 
 
@@ -34,12 +33,18 @@ for root, dirs, files in os.walk('unzipped/'):
             EpubChapterList.append(file)
             xhtmlFiles.append(os.path.join(root, file))
 
-        
 EpubChapterList = spine_order_ids
+
+
+# Check if spine_order_ids has xhtml extension if not add it
+for index, chapter in enumerate(EpubChapterList):
+    if not chapter.endswith('.xhtml'):
+        EpubChapterList[index] = f'{chapter}.xhtml'
+
 
 # Duplicate Section0001.xhtml for each chapter in EpubToConvert
 for chapter in EpubChapterList:
-    shutil.copy('export/output/OEBPS/Text/Section0001.xhtml', f'export/output/OEBPS/Text/{chapter}.xhtml')
+    shutil.copy('export/output/OEBPS/Text/Section0001.xhtml', f'export/output/OEBPS/Text/{chapter}')
 
 
 
@@ -62,7 +67,7 @@ for line in data:
         inside_manifest = False
         for index, chapter in enumerate(EpubChapterList, start=1):
             chapter_id = f'chapter{index}'
-            manifest.append(f'    <item id="{chapter_id}" href="Text/{chapter}.xhtml" media-type="application/xhtml+xml"/>\n')
+            manifest.append(f'    <item id="{chapter_id}" href="Text/{chapter}" media-type="application/xhtml+xml"/>\n')
         manifest.append(line)
     elif '<spine>' in line:
         spine.append(line)
@@ -114,7 +119,7 @@ for line in data:
     if '<ol>' in line and inside_nav:
         for index, chapter in enumerate(EpubChapterList, start=1):
             chapter_filename = os.path.basename(chapter)
-            nav.append(f'        <li><a href="{chapter_filename}.xhtml">Chapter {index}</a></li>\n')
+            nav.append(f'        <li><a href="{chapter_filename}">Chapter {index}</a></li>\n')
         inside_nav = False
 
 # Write the updated nav.xhtml file
@@ -200,3 +205,7 @@ with zipfile.ZipFile('output.epub', 'w', zipfile.ZIP_DEFLATED) as zf:
             relative_path = os.path.relpath(full_path, 'export/output')
             zf.write(full_path, relative_path)
 
+
+# Clean up the temporary directories
+shutil.rmtree('export')
+shutil.rmtree('unzipped')
