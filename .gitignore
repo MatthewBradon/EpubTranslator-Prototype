@@ -161,3 +161,6 @@ export/
 rawEpub/*
 !rawEpub/template.epub
 output.epub
+
+
+.DS_Store
