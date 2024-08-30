@@ -4,6 +4,21 @@ import shutil
 from bs4 import BeautifulSoup
 import ebooklib
 from ebooklib import epub
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+import torch
+
+
+# Check if a GPU is available and set the device accordingly
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Load the NLLB-200 model and tokenizer
+model_name = 'facebook/nllb-200-distilled-600M'
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+
+# Move the model to the GPU (if available)
+model.to(device)
+
 
 filePath = 'rawEpub/template.epub'
 EpubToConvert = 'rawEpub/この素晴らしい世界に祝福を！ 01　あぁ、駄女神さま.epub'
@@ -161,14 +176,23 @@ for chapter in xhtmlFiles:
         if element.name == 'p':
             # Extract all text within the <p> tag, ignoring inner tags
             p_text = element.get_text(strip=True)
-            chapter_content.append(f'<p>{p_text}</p>\n')
+            #Check if the text is empty
+            if not p_text:
+                continue
+            
+            # Translate the text to English
+            inputs = tokenizer(p_text, return_tensors="pt", padding=True).to(device)
+            translated = model.generate(**inputs)
+            english_text = tokenizer.decode(translated[0], skip_special_tokens=True)
+            print(english_text)
+            chapter_content.append(f'<p>{english_text}</p>\n')
 
         # Handle img tags and reformat them
         elif element.name == 'img':
             img_src = element['src']
             img_filename = os.path.basename(img_src)
             chapter_content.append(f'<img src="../Images/{img_filename}"/>\n')
-
+    print("Chapter done")
     # If the body is empty, preserve other content
     chapter_content_str = "".join(chapter_content) if chapter_content else str(body)
 
