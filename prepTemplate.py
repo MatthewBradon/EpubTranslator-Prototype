@@ -4,17 +4,17 @@ import shutil
 from bs4 import BeautifulSoup
 import ebooklib
 from ebooklib import epub
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import MarianMTModel, MarianTokenizer
 import torch
 
 
 # Check if a GPU is available and set the device accordingly
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-# Load the NLLB-200 model and tokenizer
-model_name = 'facebook/nllb-200-distilled-600M'
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+# Load the model and tokenizer
+model_name = 'Helsinki-NLP/opus-mt-ja-en'
+tokenizer = MarianTokenizer.from_pretrained(model_name)
+model = MarianMTModel.from_pretrained(model_name)
 
 # Move the model to the GPU (if available)
 model.to(device)
