@@ -225,11 +225,8 @@ def run(epubPath, finalZipPath):
 
 
 
-
-
-
     # Create a new EPUB file
-    with zipfile.ZipFile(finalZipPath + "output.epub", 'w', zipfile.ZIP_DEFLATED) as zf:
+    with zipfile.ZipFile(os.path.join(finalZipPath, 'translatedEpub.epub'), 'w', zipfile.ZIP_DEFLATED) as zf:
         for root, _, files in os.walk('export/output'):
             for file in files:
                 full_path = os.path.join(root, file)
