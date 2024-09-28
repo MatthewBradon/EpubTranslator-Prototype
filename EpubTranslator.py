@@ -4,23 +4,20 @@ import shutil
 from bs4 import BeautifulSoup
 import ebooklib
 from ebooklib import epub
-from transformers import MarianMTModel, MarianTokenizer
+from transformers import AutoTokenizer
 import torch
 import sys
-
+from optimum.onnxruntime import ORTModelForSeq2SeqLM
+from onnxruntime import InferenceSession, SessionOptions, get_available_providers
 
 def run(epubPath, finalZipPath):
 
-    # Check if a GPU is available and set the device accordingly
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # Path to the directory containing the ONNX models and config files
+    model_path = 'onnx-model-dir'
 
-    # Load the model and tokenizer
-    model_name = 'Helsinki-NLP/opus-mt-ja-en'
-    tokenizer = MarianTokenizer.from_pretrained(model_name)
-    model = MarianMTModel.from_pretrained(model_name)
-
-    # Move the model to the GPU (if available)
-    model.to(device)
+    # Load the tokenizer
+    tokenizer = AutoTokenizer.from_pretrained('Helsinki-NLP/opus-mt-ja-en')
+    model = ORTModelForSeq2SeqLM.from_pretrained(model_path)
 
 
     filePath = 'rawEpub/template.epub'
@@ -188,8 +185,8 @@ def run(epubPath, finalZipPath):
                     continue
                 
                 # Translate the text to English
-                inputs = tokenizer(p_text, return_tensors="pt", padding=True).to(device)
-                translated = model.generate(**inputs)
+                inputs = tokenizer(p_text, return_tensors='pt')
+                translated = model.generate(inputs['input_ids'])
                 english_text = tokenizer.decode(translated[0], skip_special_tokens=True)
                 print(english_text)
                 chapter_content.append(f'<p>{english_text}</p>\n')
