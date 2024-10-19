@@ -9,6 +9,7 @@ import torch
 import sys
 from optimum.onnxruntime import ORTModelForSeq2SeqLM
 from onnxruntime import InferenceSession, SessionOptions, get_available_providers
+from onnxManual import runTranslation
 
 def run(epubPath, finalZipPath):
 
@@ -17,7 +18,13 @@ def run(epubPath, finalZipPath):
 
     # Load the tokenizer
     tokenizer = AutoTokenizer.from_pretrained('Helsinki-NLP/opus-mt-ja-en')
-    model = ORTModelForSeq2SeqLM.from_pretrained(model_path)
+    # model = ORTModelForSeq2SeqLM.from_pretrained(model_path)
+
+    encoder_path = 'onnx-model-dir/encoder_model.onnx'
+    decoder_path = 'onnx-model-dir/decoder_model.onnx'
+
+    encoder_session = InferenceSession(encoder_path)
+    decoder_session = InferenceSession(decoder_path)
 
 
     filePath = 'rawEpub/template.epub'
@@ -185,9 +192,10 @@ def run(epubPath, finalZipPath):
                     continue
                 
                 # Translate the text to English
-                inputs = tokenizer(p_text, return_tensors='pt')
-                translated = model.generate(inputs['input_ids'])
-                english_text = tokenizer.decode(translated[0], skip_special_tokens=True)
+                # inputs = tokenizer(p_text, return_tensors='pt')
+                # translated = model.generate(inputs['input_ids'])
+                # english_text = tokenizer.decode(translated[0], skip_special_tokens=True)
+                english_text = runTranslation(p_text, tokenizer, encoder_session, decoder_session)
                 print(english_text)
                 chapter_content.append(f'<p>{english_text}</p>\n')
 
